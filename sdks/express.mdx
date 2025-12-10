@@ -1,0 +1,180 @@
+---
+title: "Express SDK"
+description: "Integrate Sentinel with your Express application to automatically track API requests"
+---
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @usesentinel/express
+```
+
+```bash yarn
+yarn add @usesentinel/express
+```
+
+```bash pnpm
+pnpm add @usesentinel/express
+```
+
+</CodeGroup>
+
+## Basic usage
+
+Simply add the middleware to your Express app:
+
+```typescript app.ts
+import express from "express";
+import { sentinel } from "@usesentinel/express";
+
+const app = express();
+
+// Add body parser middleware before sentinel
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Add Sentinel middleware
+app.use(sentinel()); // That's it!
+
+app.get("/", (req, res) => {
+  res.json({ message: "Hello World" });
+});
+
+app.listen(3000);
+```
+
+<Check>
+  The middleware automatically tracks all incoming requests, captures
+  request/response metadata, and sends events to Sentinel with minimal
+  performance impact.
+</Check>
+
+## Configuration
+
+The SDK automatically reads configuration from environment variables. You can also pass options directly to the middleware.
+
+### Configuration options
+
+You can pass configuration options directly when initializing the middleware:
+
+```typescript app.ts
+app.use(
+  sentinel({
+    apiKey: "sk_...", // Optional if SENTINEL_API_KEY is set
+    batchSize: 50, // Optional, default 50
+    flushInterval: 5000, // Optional, default 5000ms
+    excludePaths: ["/health", "/metrics"], // Optional
+  })
+);
+```
+
+<ResponseField name="apiKey" type="string">
+  Your Sentinel API key. Overrides the `SENTINEL_API_KEY` environment variable
+  if provided.
+</ResponseField>
+
+<ResponseField name="batchSize" type="integer" default="50">
+  Maximum number of events to batch before sending to the Sentinel API.
+</ResponseField>
+
+<ResponseField name="flushInterval" type="integer" default="5000">
+  Time in milliseconds to wait before sending a batch of events, even if the
+  batch size hasn't been reached.
+</ResponseField>
+
+<ResponseField name="excludePaths" type="string[]">
+  Array of path patterns to exclude from tracking. If you specify
+  `/v1/projects`, it will exclude all paths starting with that prefix (e.g.,
+  `/v1/projects`, `/v1/projects/123`, `/v1/projects/123/tasks`).
+</ResponseField>
+
+## Tracking steps
+
+Track sub-operations within a request to monitor database queries, external API calls, and other operations.
+
+```typescript app.ts
+import { registerStep } from "@usesentinel/express";
+
+app.get("/users", async (req, res) => {
+  if (!req.sentinel) {
+    return res.status(500).json({ error: "Sentinel not initialized" });
+  }
+
+  // Track a database query
+  const endDbStep = registerStep(req.sentinel.requestId, "db_query", {
+    table: "users",
+    operation: "SELECT",
+  });
+  const users = await db.query("SELECT * FROM users");
+  endDbStep(); // Step completes here
+
+  // Track an external API call
+  const endApiStep = registerStep(req.sentinel.requestId, "external_api_call", {
+    service: "payment_gateway",
+  });
+  const payment = await fetch("https://api.payment.com/charge", {
+    method: "POST",
+    body: JSON.stringify({ amount: 100 }),
+  });
+  endApiStep?.();
+
+  res.json(users);
+});
+```
+
+<Tip>
+  Steps are automatically included in the event sent to Sentinel, allowing you
+  to see which parts of your request took the longest. This helps identify
+  performance bottlenecks.
+</Tip>
+
+## Setting user context
+
+Identify users making requests by setting the `userId` for tracking user behavior:
+
+```typescript app.ts
+import { setUserId } from "@usesentinel/express";
+
+app.get("/users", async (req, res) => {
+  // Get user from your auth system
+  const user = await getCurrentUser();
+
+  // Identify the user making the request
+  if (req.sentinel) {
+    setUserId(req.sentinel.requestId, user.id);
+  }
+
+  res.json(users);
+});
+```
+
+<Tip>
+  The `userId` is automatically included in the event sent to Sentinel, enabling
+  user-specific analytics and tracking.
+</Tip>
+
+## How it works
+
+The middleware automatically handles the following:
+
+- **Request tracking**: Captures all incoming requests and their metadata
+- **Response capture**: Records response status codes and timing information
+- **Event batching**: Groups events together to minimize API calls
+- **Automatic retries**: Handles failures gracefully with exponential backoff (up to 3 retries by default)
+- **Performance optimization**: Non-blocking event sending ensures minimal impact on your application
+
+Events are batched and sent automatically in the background. Failed requests are automatically retried with exponential backoff, so your application flow is never interrupted.
+
+<Warning>
+  Ensure your `SENTINEL_API_KEY` environment variable is set in production.
+  Without it, events will not be sent to Sentinel.
+</Warning>
+
+## Important notes
+
+- Make sure to add body parser middleware (like `express.json()` or
+  `express.urlencoded()`) **before** the Sentinel middleware so that request
+  bodies can be captured.
+- The middleware attaches a `sentinel` property to the Express `Request`
+  object, which contains the request context including `requestId`.

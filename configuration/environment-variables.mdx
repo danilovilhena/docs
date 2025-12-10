@@ -1,0 +1,29 @@
+---
+title: "Environment Variables"
+description: "Configure Sentinel using environment variables"
+---
+
+## Variables
+
+<ResponseField name="SENTINEL_API_KEY" type="string" required>
+  Your Ingest API Key for authenticating requests to the ingestion API. Get this
+  from your Sentinel dashboard.
+</ResponseField>
+
+<ResponseField name="SENTINEL_DEBUG" type="boolean">
+  Enable debug logging to see logs when events are sent. Useful for verifying
+  that events are being tracked correctly. Default: `false`
+</ResponseField>
+
+## Example
+
+Create a `.env` file in your project root:
+
+```bash .env
+SENTINEL_API_KEY=sk_live_abc123...
+SENTINEL_DEBUG=false
+```
+
+<Warning>
+  Never commit `.env` files to version control. Add them to your `.gitignore`.
+</Warning>

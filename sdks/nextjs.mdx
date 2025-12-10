@@ -1,0 +1,226 @@
+---
+title: "Next.js SDK"
+description: "Integrate Sentinel with your Next.js application to automatically track API requests"
+---
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @usesentinel/nextjs
+```
+
+```bash yarn
+yarn add @usesentinel/nextjs
+```
+
+```bash pnpm
+pnpm add @usesentinel/nextjs
+```
+
+</CodeGroup>
+
+## Basic usage
+
+### API Routes (Pages Router)
+
+Wrap your API route handlers with `withSentinel`:
+
+```typescript pages/api/health.ts
+import { withSentinel, type SentinelContext } from "@usesentinel/nextjs";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+export default withSentinel(
+  async (
+    req: NextApiRequest & { sentinel?: SentinelContext },
+    res: NextApiResponse
+  ) => {
+    res.json({ status: "ok" });
+  }
+);
+```
+
+### Route Handlers (App Router)
+
+Wrap your route handlers with `withSentinelRouteHandler`:
+
+```typescript app/api/health/route.ts
+import {
+  withSentinelRouteHandler,
+  type SentinelContext,
+} from "@usesentinel/nextjs";
+import { NextRequest, NextResponse } from "next/server";
+
+export const GET = withSentinelRouteHandler(
+  async (req: NextRequest & { sentinel?: SentinelContext }) => {
+    return NextResponse.json({ status: "ok" });
+  }
+);
+```
+
+<Check>
+  The wrapper automatically tracks all incoming requests, captures
+  request/response metadata, and sends events to Sentinel with minimal
+  performance impact.
+</Check>
+
+## Configuration
+
+The SDK automatically reads configuration from environment variables. You can also pass options directly to the wrapper functions.
+
+### Configuration options
+
+You can pass configuration options directly when wrapping your handlers:
+
+```typescript pages/api/health.ts
+export default withSentinel(
+  async (req, res) => {
+    res.json({ status: "ok" });
+  },
+  {
+    apiKey: "sk_...", // Optional if SENTINEL_API_KEY is set
+    batchSize: 50, // Optional, default 50
+    flushInterval: 5000, // Optional, default 5000ms
+    excludePaths: ["/api/health", "/api/metrics"], // Optional
+  }
+);
+```
+
+<ResponseField name="apiKey" type="string">
+  Your Sentinel API key. Overrides the `SENTINEL_API_KEY` environment variable
+  if provided.
+</ResponseField>
+
+<ResponseField name="batchSize" type="integer" default="50">
+  Maximum number of events to batch before sending to the Sentinel API.
+</ResponseField>
+
+<ResponseField name="flushInterval" type="integer" default="5000">
+  Time in milliseconds to wait before sending a batch of events, even if the
+  batch size hasn't been reached.
+</ResponseField>
+
+<ResponseField name="excludePaths" type="string[]">
+  Array of path patterns to exclude from tracking. If you specify
+  `/v1/projects`, it will exclude all paths starting with that prefix (e.g.,
+  `/v1/projects`, `/v1/projects/123`, `/v1/projects/123/tasks`).
+</ResponseField>
+
+## Setting user context
+
+Identify users making requests by setting the `userId` for tracking user behavior:
+
+### API Routes (Pages Router)
+
+```typescript pages/api/users.ts
+import {
+  withSentinel,
+  setUserId,
+  type SentinelContext,
+} from "@usesentinel/nextjs";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+export default withSentinel(
+  async (
+    req: NextApiRequest & { sentinel?: SentinelContext },
+    res: NextApiResponse
+  ) => {
+    // Get user from your auth system
+    const user = await getCurrentUser(req);
+
+    // Identify the user making the request
+    if (req.sentinel) {
+      setUserId(req.sentinel.requestId, user.id);
+    }
+
+    res.json({ users: [] });
+  }
+);
+```
+
+### Route Handlers (App Router)
+
+```typescript app/api/users/route.ts
+import {
+  withSentinelRouteHandler,
+  setUserId,
+  type SentinelContext,
+} from "@usesentinel/nextjs";
+import { NextRequest, NextResponse } from "next/server";
+
+export const GET = withSentinelRouteHandler(
+  async (req: NextRequest & { sentinel?: SentinelContext }) => {
+    // Get user from your auth system
+    const user = await getCurrentUser(req);
+
+    // Identify the user making the request
+    if (req.sentinel) {
+      setUserId(req.sentinel.requestId, user.id);
+    }
+
+    return NextResponse.json({ users: [] });
+  }
+);
+```
+
+<Tip>
+  The `userId` is automatically included in the event sent to Sentinel, enabling
+  user-specific analytics and tracking.
+</Tip>
+
+## Tracking steps
+
+Track sub-operations within a request to monitor database queries, external API calls, and other operations.
+
+```typescript pages/api/users.ts
+import {
+  withSentinel,
+  registerStep,
+  type SentinelContext,
+} from "@usesentinel/nextjs";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+export default withSentinel(
+  async (
+    req: NextApiRequest & { sentinel?: SentinelContext },
+    res: NextApiResponse
+  ) => {
+    if (!req.sentinel) {
+      return res.status(500).json({ error: "Sentinel not initialized" });
+    }
+
+    // Track a database query
+    const endDbStep = registerStep(req.sentinel.requestId, "db_query", {
+      table: "users",
+      operation: "SELECT",
+    });
+    const users = await db.query("SELECT * FROM users");
+    endDbStep();
+
+    res.json(users);
+  }
+);
+```
+
+<Tip>
+  Steps are automatically included in the event sent to Sentinel, allowing you
+  to see which parts of your request took the longest. This helps identify
+  performance bottlenecks.
+</Tip>
+
+## How it works
+
+The wrapper automatically handles the following:
+
+- **Request tracking**: Captures all incoming requests and their metadata
+- **Response capture**: Records response status codes and timing information
+- **Event batching**: Groups events together to minimize API calls
+- **Automatic retries**: Handles failures gracefully with exponential backoff (up to 3 retries by default)
+- **Performance optimization**: Non-blocking event sending ensures minimal impact on your application
+
+Events are batched and sent automatically in the background. Failed requests are automatically retried with exponential backoff, so your application flow is never interrupted.
+
+<Warning>
+  Ensure your `SENTINEL_API_KEY` environment variable is set in production.
+  Without it, events will not be sent to Sentinel.
+</Warning>

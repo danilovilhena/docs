@@ -1,97 +1,54 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Introducing Sentinel"
+description: "Monitor your API with one line of code."
 ---
 
-## Setting up
+## What is Sentinel?
 
-Get your documentation site up and running in minutes.
+Sentinel is meant to be the **easiest way to monitor your API**. We aim to support the major frameworks with **one line of code** and a couple of environment variables.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
+Track response times, request/response metrics, monitor performance, and gain insights into your API usage **without complex setup**.
+
+## What motivated me to build Sentinel?
+
+Setting up API monitoring tools like Prometheus and other industry giants can be **incredibly complex and time-consuming**.
+
+Many teams find themselves **spending more resources trying to configure and maintain these systems** than actually benefiting from them.
+
+Sometimes, teams prefer not to waste their resources trying to set this up than trying to figure out how to set up Prometheus properly in their API.
+
+So, I decided it was time that we had a simple tool that we could **plug and play with minimal effort** and it could monitor your API. Then, view useful dashboards, extract metrics, and get insights into your API usage.
+
+## Key features
+
+<Card title="Integrate in 2 minutes" icon="plug">
+  Use our SDKs to integrate Sentinel or use our API directly.
 </Card>
 
-## Make it yours
+<Card title="Real-time analytics" icon="chart-line">
+  Get instant insights into your API performance and usage.
+</Card>
 
-Design a docs site that looks great and empowers your users.
+<Card title="Batched ingestion" icon="layer-group">
+  Efficient event batching reduces overhead and improves performance.
+</Card>
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+<Card title="Scalable architecture" icon="server">
+  Built on Redis and ClickHouse for high-throughput, fast analytics.
+</Card>
 
-## Create beautiful pages
+## How it works
 
-Everything you need to create world-class documentation.
+When using one of our custom SDKs, Sentinel integrates directly into the request lifecycle of your application.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+For example, if you're using Express, we provide middleware that gathers data before the request runs and after it returns, capturing metrics from both stages.
 
-## Need inspiration?
+Sentinel automatically collects metrics and sends them to our ingestion API.
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
+Events are queued in Redis, processed by workers, and stored in ClickHouse for real-time analytics.
+
+## Next steps
+
+<Card title="Quickstart guide" icon="rocket" href="/quickstart">
+  Get up and running in under 5 minutes.
 </Card>

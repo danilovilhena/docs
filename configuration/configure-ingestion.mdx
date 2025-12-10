@@ -1,0 +1,126 @@
+---
+title: "Configure Ingestion"
+description: "Customize data collection, filtering, and privacy settings for your project"
+---
+
+You can configure data collection, filtering, and privacy settings for your project by navigating to **Settings** → **Configuration** within your project dashboard.
+
+## Request and response body capture
+
+### Capture request body
+
+Enable this option to capture and store the full request body content in event data for debugging and analysis.
+
+<Tip>
+  Capturing request bodies is useful for debugging API issues, but be mindful of
+  privacy and data protection requirements. Sensitive data can be masked using
+  the masking options below.
+</Tip>
+
+### Capture response body
+
+Enable this option to capture and store the full response body content in event data for complete request-response tracking.
+
+<Warning>
+  Response bodies may contain sensitive information. Ensure you configure
+  appropriate masking rules before enabling this option in production.
+</Warning>
+
+## IP address filtering
+
+### Exclude localhost
+
+Enable this option to prevent event collection from requests originating from localhost IP addresses (`localhost`, `127.0.0.1`, `::1`).
+
+<Info>
+  This is useful for excluding development and testing traffic from your
+  production analytics.
+</Info>
+
+### Excluded IP addresses
+
+Specify IP addresses that will be completely excluded from event collection. This is useful for blocking noisy sources or internal testing IPs.
+
+You can add multiple IP addresses, one per line. For example:
+
+```
+192.168.1.1
+10.0.0.5
+172.16.0.1
+```
+
+<Tip>
+  Add your current development machine's IP address to prevent your local
+  testing traffic from being tracked.
+</Tip>
+
+## Field masking
+
+### Masked field names
+
+Specify field names that will be automatically masked (replaced with asterisks) in request and response bodies to protect sensitive information like passwords, tokens, and API keys.
+
+You can add multiple field names. Common examples include:
+
+- `password`
+- `token`
+- `authorization`
+- `set-cookie`
+- `apiKey`
+- `secret`
+
+<Warning>
+  Field name masking is case-sensitive and matches exact field names at the root
+  level of the request/response body.
+</Warning>
+
+### Masked JSON paths
+
+Use JSONPath expressions to mask specific nested fields in request/response bodies. Use dot notation to target deeply nested values.
+
+Examples:
+
+- `user.email` - Masks the email field within a user object
+- `order.card.number` - Masks the card number in a nested order structure
+- `credentials.apiKey` - Masks API keys in nested credential objects
+- `data.user.password` - Masks passwords at any nesting level
+
+<Tip>
+  JSONPath expressions allow you to mask sensitive data even when it's nested
+  deep within complex JSON structures, providing more granular control than
+  field name masking.
+</Tip>
+
+## Header masking
+
+Control which HTTP headers are automatically masked to protect sensitive authentication and session data.
+
+### Mask cookies
+
+Enable this option to automatically mask all cookie-related headers (`Set-Cookie`, `Cookie`) to protect session information.
+
+<Check>
+  Cookie masking is recommended for all production environments to protect user
+  session data.
+</Check>
+
+### Mask authorization
+
+Enable this option to automatically mask the `Authorization` header to protect API keys, tokens, and credentials.
+
+### Custom masked headers
+
+Specify additional custom headers that should be automatically masked in all events. Common examples include:
+
+- `X-API-Key`
+- `X-Auth-Token`
+- `X-Session-Token`
+- `X-API-Secret`
+
+You can add multiple headers, one per line. Header names are case-insensitive.
+
+<Info>
+  Custom headers are masked regardless of whether cookie or authorization
+  masking is enabled, giving you full control over which headers contain
+  sensitive information.
+</Info>

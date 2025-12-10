@@ -1,0 +1,268 @@
+---
+title: "JavaScript SDK"
+description: "Manual event tracking SDK for Sentinel - Track events programmatically in your application"
+---
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @usesentinel/sentinel
+```
+
+```bash yarn
+yarn add @usesentinel/sentinel
+```
+
+```bash pnpm
+pnpm add @usesentinel/sentinel
+```
+
+```bash bun
+bun add @usesentinel/sentinel
+```
+
+</CodeGroup>
+
+## Basic usage
+
+### Basic setup
+
+Create a client instance to start tracking events:
+
+```typescript client.ts
+import { createClient } from "@usesentinel/sentinel";
+
+const client = createClient({
+  apiKey: process.env.SENTINEL_API_KEY!,
+});
+```
+
+<Check>
+  The client provides methods to send events individually or in batches, with
+  automatic retries and error handling built-in.
+</Check>
+
+## Sending events
+
+### Send a single event
+
+Send a complete event in one call:
+
+```typescript
+import {
+  createClient,
+  createRequestId,
+  getCurrentTimestamp,
+  getBodySize,
+} from "@usesentinel/sentinel";
+import type { Event } from "@usesentinel/sentinel";
+
+const client = createClient({ apiKey: "sk_..." });
+
+const event: Event = {
+  method: "GET",
+  path: "/api/users",
+  bodySize: 0,
+  statusCode: 200,
+  responseBodySize: 0,
+  startedOn: getCurrentTimestamp(),
+  finishedOn: getCurrentTimestamp(),
+  duration: 150,
+  requestId: createRequestId(),
+};
+
+await client.sendEvent(event);
+```
+
+### Send a batch of events
+
+Send multiple events at once for better performance:
+
+```typescript
+const events: Event[] = [
+  {
+    method: "GET",
+    path: "/api/users",
+    bodySize: 0,
+    statusCode: 200,
+    responseBodySize: 0,
+    startedOn: getCurrentTimestamp(),
+    finishedOn: getCurrentTimestamp(),
+    duration: 150,
+    requestId: createRequestId(),
+  },
+  {
+    method: "POST",
+    path: "/api/users",
+    body: JSON.stringify({ name: "John" }),
+    bodySize: getBodySize(JSON.stringify({ name: "John" })),
+    statusCode: 201,
+    responseBody: JSON.stringify({ id: "123" }),
+    responseBodySize: getBodySize(JSON.stringify({ id: "123" })),
+    startedOn: getCurrentTimestamp(),
+    finishedOn: getCurrentTimestamp(),
+    duration: 200,
+    requestId: createRequestId(),
+  },
+];
+
+await client.sendBatch(events);
+```
+
+<Tip>
+  Batching events reduces the number of API calls and improves performance,
+  especially for high-volume applications.
+</Tip>
+
+### Start and complete events
+
+For long-running requests or when you want to track the start and completion separately:
+
+```typescript
+import {
+  createClient,
+  createRequestId,
+  getCurrentTimestamp,
+  getBodySize,
+} from "@usesentinel/sentinel";
+import type { EventStart, EventComplete } from "@usesentinel/sentinel";
+
+const client = createClient({ apiKey: "sk_..." });
+const requestId = createRequestId();
+
+// Start tracking
+const eventStart: EventStart = {
+  requestId,
+  method: "POST",
+  path: "/api/users",
+  body: JSON.stringify({ name: "John" }),
+  bodySize: getBodySize(JSON.stringify({ name: "John" })),
+  startedOn: getCurrentTimestamp(),
+  userId: "user-123",
+};
+
+await client.startEvent(eventStart);
+
+// ... do your work ...
+
+// Complete tracking
+const eventComplete: EventComplete = {
+  requestId,
+  statusCode: 201,
+  responseBody: JSON.stringify({ id: "123" }),
+  responseBodySize: getBodySize(JSON.stringify({ id: "123" })),
+  finishedOn: getCurrentTimestamp(),
+};
+
+await client.completeEvent(eventComplete);
+```
+
+<Info>
+  Start/complete tracking is useful for asynchronous operations or when you need
+  to track events that span multiple function calls or processes.
+</Info>
+
+## Tracking steps
+
+Track sub-operations within a request to monitor database queries, external API calls, and other operations:
+
+```typescript
+const eventComplete: EventComplete = {
+  requestId,
+  statusCode: 200,
+  finishedOn: getCurrentTimestamp(),
+  steps: [
+    {
+      name: "db_query",
+      startedOn: getCurrentTimestamp(),
+      finishedOn: getCurrentTimestamp(),
+      duration: 50,
+      metadata: { table: "users", operation: "SELECT" },
+    },
+    {
+      name: "external_api_call",
+      startedOn: getCurrentTimestamp(),
+      finishedOn: getCurrentTimestamp(),
+      duration: 100,
+      metadata: { service: "payment_gateway" },
+    },
+  ],
+};
+
+await client.completeEvent(eventComplete);
+```
+
+<Tip>
+  Steps are automatically included in the event sent to Sentinel, allowing you
+  to see which parts of your request took the longest. This helps identify
+  performance bottlenecks.
+</Tip>
+
+## Configuration
+
+The SDK automatically reads configuration from environment variables. You can also pass options directly when creating the client.
+
+<ResponseField name="apiKey" type="string" required>
+  Your Sentinel API key. Can be provided via `SENTINEL_API_KEY` environment
+  variable or passed directly to `createClient()`.
+</ResponseField>
+
+<Warning>
+  Ensure your `SENTINEL_API_KEY` environment variable is set in production.
+  Without it, events will not be sent to Sentinel.
+</Warning>
+
+## API reference
+
+### `createClient(config: SentinelConfig): SentinelClient`
+
+Creates a new Sentinel client instance.
+
+### `client.sendEvent(event: Event): Promise<{ success: boolean; queued: number; projectId: string }>`
+
+Sends a single event to Sentinel.
+
+### `client.sendBatch(events: Event[]): Promise<{ success: boolean; queued: number; projectId: string }>`
+
+Sends a batch of events to Sentinel in a single API call.
+
+### `client.startEvent(eventStart: EventStart): Promise<{ success: boolean; requestId: string; projectId: string }>`
+
+Starts tracking an event. The event will be stored partially until completed.
+
+### `client.completeEvent(eventComplete: EventComplete): Promise<{ success: boolean; requestId: string; projectId: string }>`
+
+Completes an event that was previously started. The start and complete data will be merged and sent.
+
+## Helper functions
+
+<ResponseField name="createRequestId()" type="string">
+  Generates a unique request ID for tracking events.
+</ResponseField>
+
+<ResponseField name="getCurrentTimestamp()" type="string">
+  Gets the current timestamp in ISO 8601 format.
+</ResponseField>
+
+<ResponseField name="getBodySize(body: string | undefined)" type="number">
+  Calculates the size of a request or response body in bytes.
+</ResponseField>
+
+## Error handling
+
+All methods throw errors if the request fails. Make sure to handle errors appropriately:
+
+```typescript
+try {
+  await client.sendEvent(event);
+} catch (error) {
+  console.error("Failed to send event:", error);
+  // Handle error (retry, log, etc.)
+}
+```
+
+<Warning>
+  Always wrap SDK calls in try-catch blocks to prevent unhandled promise
+  rejections that could crash your application.
+</Warning>
